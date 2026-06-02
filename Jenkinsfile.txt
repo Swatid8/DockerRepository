@@ -1,0 +1,58 @@
+pipeline {
+
+    agent any 
+
+    stages {
+
+        stage('Set Variables') {
+            steps {
+                script {
+                    if (env.BRANCH_NAME == "2026Q1") {
+                        env.CONTAINER_NAME = "c1"
+                        env.PORT = "80"
+						env.DEPLOY_PATH = "/mnt/deploy/q1"
+                    } else if (env.BRANCH_NAME == "2026Q2") {
+                        env.CONTAINER_NAME = "c2"
+                        env.PORT = "90"
+						env.DEPLOY_PATH = "/mnt/deploy/q2"
+                    } else if (env.BRANCH_NAME == "2026Q3") {
+                        env.CONTAINER_NAME = "c3"
+                        env.PORT = "9080"
+						env.DEPLOY_PATH = "/mnt/deploy/q3"
+                    }
+                }
+            }
+        }
+		
+		stage('Copy index.html') {
+              steps {
+                sh """
+				rm -rf ${DEPLOY_PATH}
+				mkdir -p ${DEPLOY_PATH}
+                cp index.html ${DEPLOY_PATH}/
+				chmod 755 ${DEPLOY_PATH}
+                chmod 644 ${DEPLOY_PATH}/index.html 								
+                """
+                }
+            }
+		
+        stage('Run Container') {
+            steps {
+                sh """
+                docker rm -f ${CONTAINER_NAME} || true
+				sleep 5
+                docker run --name ${CONTAINER_NAME} -dp ${PORT}:80 -v ${DEPLOY_PATH}:/usr/local/apache2/htdocs httpd:latest
+                """
+            }
+        }
+		
+		 stage('Verify') {
+            steps {
+                sh """
+                docker ps
+                """
+            }
+        }
+			
+    }
+}
